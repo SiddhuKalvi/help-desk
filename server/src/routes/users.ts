@@ -3,6 +3,7 @@ import { createUserSchema, updateUserSchema } from "core";
 import { hashPassword } from "better-auth/crypto";
 import { requireAdmin } from "../middleware/requireAdmin.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
+import { AI_AGENT_EMAIL } from "../lib/aiAgent.ts";
 import { prisma } from "../lib/prisma.ts";
 import { validateBody } from "../lib/validate.ts";
 import { Prisma, Role } from "../generated/prisma/client.ts";
@@ -11,7 +12,7 @@ export const usersRouter = Router();
 
 usersRouter.get("/", requireAdmin, async (_req, res) => {
   const users = await prisma.user.findMany({
-    where: { deletedAt: null },
+    where: { deletedAt: null, email: { not: AI_AGENT_EMAIL } },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
@@ -20,7 +21,7 @@ usersRouter.get("/", requireAdmin, async (_req, res) => {
 
 usersRouter.get("/agents", requireAuth, async (_req, res) => {
   const agents = await prisma.user.findMany({
-    where: { role: Role.agent, deletedAt: null },
+    where: { role: Role.agent, deletedAt: null, email: { not: AI_AGENT_EMAIL } },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });
@@ -119,7 +120,7 @@ usersRouter.delete("/:id", requireAdmin, async (req, res) => {
 
   const target = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true, deletedAt: true },
+    select: { role: true, deletedAt: true, email: true },
   });
 
   if (!target || target.deletedAt) {
@@ -128,6 +129,10 @@ usersRouter.delete("/:id", requireAdmin, async (req, res) => {
   }
   if (target.role === Role.admin) {
     res.status(403).json({ error: "Admin users cannot be deleted." });
+    return;
+  }
+  if (target.email === AI_AGENT_EMAIL) {
+    res.status(403).json({ error: "The AI agent account cannot be deleted." });
     return;
   }
 
