@@ -1,0 +1,43 @@
+{
+  "name": "server",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:migrate": "prisma migrate deploy",
+    "test:seed": "bun prisma/seed.ts",
+    "test:seed:agent": "bun scripts/seed-test-agent.ts",
+    "seed:ai-agent": "bun prisma/seedAiAgent.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
+    "@types/pg": "^8.20.0",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0"
+  },
+  "peerDependencies": {
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^1.2.2",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@sentry/node": "^10.67.0",
+    "ai": "^5.0.15",
+    "better-auth": "^1.6.23",
+    "core": "workspace:*",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "pg": "^8.22.0",
+    "pg-boss": "^12.26.1",
+    "zod": "^4.4.3"
+  }
+}

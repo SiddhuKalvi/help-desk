@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  agent
+}
+
+enum TicketStatus {
+  new
+  processing
+  open
+  resolved
+  closed
+}
+
+enum TicketCategory {
+  general_question
+  technical_question
+  refund_request
+}
+
+enum ReplySenderType {
+  agent
+  customer
+  ai
+}
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role     @default(agent)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  sessions Session[]
+  accounts Account[]
+  assignedTickets Ticket[] @relation("TicketAssignee")
+  replies         Reply[]  @relation("ReplyAuthor")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id           String    @id
+  accountId    String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope        String?
+  password     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+model Ticket {
+  id          Int             @id @default(autoincrement())
+  subject     String
+  body        String
+  senderEmail String
+  senderName  String
+  status      TicketStatus    @default(new)
+  category    TicketCategory?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  resolvedAt  DateTime?
+
+  // Message-ID of the original inbound email that started this thread, used to
+  // thread later replies (agent outbound or customer inbound) onto this ticket.
+  messageId String? @unique
+  // Stable, app-generated identifier for the thread as a whole (independent of
+  // any single email's Message-ID), assigned once when the ticket is created.
+  threadId String? @unique
+
+  assigneeId String?
+  assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
+
+  replies Reply[]
+
+  @@index([status])
+  @@index([senderEmail])
+  @@index([assigneeId])
+  @@map("ticket")
+}
+
+model Reply {
+  id         Int             @id @default(autoincrement())
+  body       String
+  ticketBody String
+  senderType ReplySenderType @default(agent)
+  createdAt  DateTime        @default(now())
+
+  // Message-ID of this reply's own email (generated for agent-sent replies,
+  // taken from the inbound webhook payload for customer replies), plus the
+  // raw In-Reply-To/References header values sent or received with it.
+  messageId String? @unique
+  inReplyTo String?
+  references String?
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId String?
+  author   User?   @relation("ReplyAuthor", fields: [authorId], references: [id])
+
+  @@index([ticketId])
+  @@map("reply")
+}

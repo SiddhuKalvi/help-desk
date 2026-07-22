@@ -1,0 +1,17 @@
+{
+  "name": "help-desk",
+  "private": true,
+  "workspaces": ["client", "server", "e2e", "core"],
+  "scripts": {
+    "dev": "bun --filter '*' dev",
+    "build": "bun --filter '*' build",
+    "typecheck": "bun --filter '*' typecheck",
+    "test:e2e:setup": "cd server && bun --env-file=.env.test run test:migrate && bun --env-file=.env.test run test:seed",
+    "test:e2e": "bun --filter e2e test",
+    "test:e2e:ui": "bun --filter e2e test:ui",
+    "test:e2e:headed": "bun --filter e2e test:headed"
+  },
+  "devDependencies": {
+    "client": "workspace:*"
+  }
+}
