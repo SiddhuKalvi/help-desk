@@ -12,6 +12,15 @@ const classificationSchema = z.object({
   category: z.enum(ticketCategories),
 });
 
+// The free-tier model occasionally ignores the schema entirely and returns
+// the bare category value as plain text (e.g. `technical_question` instead
+// of `{"category":"technical_question"}`) - salvage that instead of burning
+// a retry attempt on an otherwise-correct answer.
+function repairCategoryText(text: string): string | null {
+  const cleaned = text.trim().replace(/^["'`]+|["'`]+$/g, "");
+  return (ticketCategories as readonly string[]).includes(cleaned) ? JSON.stringify({ category: cleaned }) : null;
+}
+
 export type ClassifiableTicket = Prisma.TicketGetPayload<{ select: { id: true; subject: true; body: true } }>;
 
 export const CLASSIFY_TICKET_QUEUE = "classify-ticket";
@@ -67,6 +76,7 @@ async function classifyTicket(ticket: ClassifiableTicket): Promise<void> {
       "technical_question: technical issues, bugs, or how-to questions about a product or system. " +
       "refund_request: requests for a refund or a billing/payment dispute.",
     prompt: `Subject: ${ticket.subject}\n\nBody: ${ticket.body}`,
+    experimental_repairText: async ({ text }) => repairCategoryText(text),
   });
 
   await prisma.ticket.update({

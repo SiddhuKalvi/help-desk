@@ -41,6 +41,24 @@ function isNonAnswer(paragraphs: string[], bulletPoints: string[] | undefined): 
   return NON_ANSWER_PATTERN.test([...paragraphs, ...(bulletPoints ?? [])].join(" "));
 }
 
+// The free-tier model sometimes ignores the JSON schema and reasons out loud
+// instead (e.g. `resolution: "escalate"` or `**resolving:**\nescalate - low
+// confidence`). It's only ever observed doing this for the escalate case -
+// there's no reliable way to reconstruct a "resolved" reply's paragraphs from
+// freeform prose, so this only salvages a clearly-stated escalate intent and
+// otherwise returns null, leaving the existing retry/fallback-to-open behavior
+// unchanged.
+function repairEscalateText(text: string): string | null {
+  if (!/escalate/i.test(text)) return null;
+  const reasonMatch = text.match(/escalate["')\s:–-]*\s*(.+)/is);
+  const reason =
+    reasonMatch?.[1]
+      ?.trim()
+      .replace(/^["'*\s]+|["'*\s]+$/g, "")
+      .slice(0, 500) || "Model indicated escalation but gave no parsable reason.";
+  return JSON.stringify({ resolution: "escalate", reason });
+}
+
 function formatResolvedReply(
   customerFirstName: string,
   paragraphs: string[],
@@ -86,6 +104,7 @@ export async function resolveTicketFromKnowledgeBase(ticket: TicketToResolve): P
       `From: ${ticket.senderName} <${ticket.senderEmail}>\n` +
       `Subject: ${ticket.subject}\n\n` +
       `Body:\n${ticket.body}`,
+    experimental_repairText: async ({ text }) => repairEscalateText(text),
   });
 
   const shouldResolve = object.resolution === "resolved" && !isNonAnswer(object.paragraphs, object.bulletPoints);
