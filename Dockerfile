@@ -29,4 +29,4 @@ WORKDIR /app/server
 RUN bunx prisma generate
 
 EXPOSE 3001
-CMD ["sh", "-c", "bunx prisma migrate deploy && bun run start"]
+CMD ["sh", "-c", "bunx prisma migrate deploy && bun run seed:ai-agent && ([ -z \"$ADMIN_EMAIL\" ] || [ -z \"$ADMIN_PASSWORD\" ] || bun prisma/seed.ts) && bun run start"]

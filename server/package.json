@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
+    "start:prod": "bunx prisma migrate deploy && bun run seed:ai-agent && ([ -z \"$ADMIN_EMAIL\" ] || [ -z \"$ADMIN_PASSWORD\" ] || bun prisma/seed.ts) && bun run start",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:migrate": "prisma migrate deploy",
